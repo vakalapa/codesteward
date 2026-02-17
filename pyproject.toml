@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codesteward"
+version = "0.1.0"
+description = "Simulates multi-reviewer code reviews for GitHub PRs"
+authors = [{name = "Vamsi Kalapala"}]
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.9.0",
+    "requests>=2.31.0",
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+llm = [
+    "anthropic>=0.39.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "mypy",
+    "ruff",
+]
+embeddings = [
+    "scikit-learn>=1.3",
+]
+
+[project.scripts]
+codesteward = "codesteward.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["codesteward*"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
