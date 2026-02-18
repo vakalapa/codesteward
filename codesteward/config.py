@@ -9,6 +9,8 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field, SecretStr
 
+from codesteward.pr_filter import PRFilterConfig
+
 DEFAULT_CONFIG_PATHS = [
     Path("codesteward.yaml"),
     Path.home() / ".codesteward" / "config.yaml",
@@ -38,6 +40,7 @@ class Config(BaseModel):
     redact_quotes: bool = False
     large_diff_threshold: int = 500
     llm: LLMConfig = Field(default_factory=LLMConfig)
+    pr_filter: PRFilterConfig = Field(default_factory=PRFilterConfig)
 
 
 def load_config(

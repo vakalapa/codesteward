@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from codesteward.db import Database
 from codesteward.github_client import GitHubClient
+from codesteward.pr_filter import PRClassifier, PRFilterConfig
 from codesteward.repo_mapper import RepoMapper
 
 logger = logging.getLogger(__name__)
@@ -15,9 +16,18 @@ logger = logging.getLogger(__name__)
 class Ingestor:
     """Pulls PR metadata, reviews, and review comments from GitHub REST API."""
 
-    def __init__(self, db: Database, gh: GitHubClient) -> None:
+    def __init__(
+        self,
+        db: Database,
+        gh: GitHubClient,
+        filter_policy: PRFilterConfig | None = None,
+    ) -> None:
         self.db = db
         self.gh = gh
+        policy = filter_policy if filter_policy is not None else PRFilterConfig()
+        self.classifier = PRClassifier(policy)
+        if policy.enabled:
+            logger.info("PR filter enabled (bot/CVE heuristics active)")
 
     def ingest(
         self,
@@ -57,7 +67,7 @@ class Ingestor:
         prs = self.gh.list_prs(repo, state="closed", max_items=max_prs)
         logger.info("Fetched %d PRs from GitHub", len(prs))
 
-        stats = {"prs": 0, "files": 0, "reviews": 0, "comments": 0, "ownership": ownership_count, "skipped_area": 0}
+        stats = {"prs": 0, "files": 0, "reviews": 0, "comments": 0, "ownership": ownership_count, "skipped_area": 0, "skipped_bot_cve": 0}
         latest_created: str = ""
 
         with self.db.bulk():
@@ -69,6 +79,13 @@ class Ingestor:
                         continue  # Skip PRs older than the window
 
                 pr_number = pr_data["number"]
+
+                # Bot/CVE PR filter: skip low-signal automated PRs
+                skip, reason = self.classifier.should_skip(pr_data)
+                if skip:
+                    logger.debug("Skipping PR #%d (%s): %s", pr_number, pr_data.get("title", ""), reason)
+                    stats["skipped_bot_cve"] += 1
+                    continue
 
                 # Fetch files early so we can filter by area
                 try:
@@ -160,7 +177,9 @@ class Ingestor:
             self.db.set_last_ingest(repo, latest_created)
 
         logger.info(
-            "Ingestion complete: %d PRs, %d files, %d reviews, %d comments (skipped %d by area filter)",
-            stats["prs"], stats["files"], stats["reviews"], stats["comments"], stats["skipped_area"],
+            "Ingestion complete: %d PRs, %d files, %d reviews, %d comments "
+            "(skipped %d by area filter, %d by bot/CVE filter)",
+            stats["prs"], stats["files"], stats["reviews"], stats["comments"],
+            stats["skipped_area"], stats["skipped_bot_cve"],
         )
         return stats
