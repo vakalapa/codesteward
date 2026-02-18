@@ -1,7 +1,7 @@
 # 001 - Evidence Validation Pipeline
 
 ## Status
-Not Started
+Done
 
 ## Problem
 Evidence enforcement is inconsistent across generation paths; vision requires strict evidence grounding for every claim.

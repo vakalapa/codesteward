@@ -8,6 +8,22 @@ It is a **pre-human stewardship layer** designed to raise quality, reduce review
 
 ---
 
+## Documentation Index
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](architecture.md) | System architecture, component interactions, data flow |
+| [Data Model](data-model.md) | Database schema, Pydantic models, enums |
+| [Configuration](configuration.md) | YAML config, environment variables, CLI flags |
+| [CLI Reference](cli-reference.md) | All commands with flags, examples, output format |
+| [Evidence Grounding](evidence-grounding.md) | Evidence system, validation pipeline, strict/lenient modes |
+| [Reviewer Profiles](reviewer-profiles.md) | Skill cards, profiling algorithm, focus weights |
+| [Heuristic Engine](heuristic-engine.md) | Pattern-based fallback engine, scanners, verdict logic |
+| [Development Guide](development.md) | Dev setup, testing, project structure, contributing |
+| [Agent Rules](agents.md) | Rules for AI agents: test requirements, doc requirements, conventions |
+
+---
+
 ## Table of Contents
 
 - [Motivation](#motivation)

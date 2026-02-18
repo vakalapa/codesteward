@@ -7,6 +7,7 @@ import logging
 import re
 from typing import Any
 
+from codesteward.evidence import EvidenceValidator
 from codesteward.schemas import (
     ChangeContext,
     Evidence,
@@ -100,6 +101,7 @@ class ReviewSimulator:
         max_diff_chars: int = 12000,
     ) -> None:
         self.strict_evidence = strict_evidence
+        self._evidence_validator = EvidenceValidator(strict=strict_evidence)
         self.llm_model = llm_model
         self.llm_max_tokens = llm_max_tokens
         self.max_diff_chars = max_diff_chars
@@ -198,7 +200,13 @@ class ReviewSimulator:
         raw_text = response.content[0].text  # type: ignore[union-attr]
         review_data = _extract_json(raw_text)
 
-        return _parse_llm_response(card.reviewer, review_data)
+        review = _parse_llm_response(card.reviewer, review_data)
+
+        # Validate evidence on LLM-generated reviews
+        if self.strict_evidence:
+            review = self._evidence_validator.validate_review(review)
+
+        return review
 
     # ------------------------------------------------------------------
     # Heuristic-based fallback simulation
@@ -368,9 +376,9 @@ class ReviewSimulator:
         else:
             verdict = "comment"
 
-        # Enforce evidence grounding
+        # Enforce evidence grounding via validation pipeline
         if self.strict_evidence:
-            comments = _enforce_evidence(comments)
+            comments = self._evidence_validator.validate_comments(comments)
 
         return ReviewerReview(
             reviewer=card.reviewer,
@@ -748,21 +756,14 @@ def _scan_compat_changes(files: list) -> list[ReviewComment]:
 
 
 def _enforce_evidence(comments: list[ReviewComment]) -> list[ReviewComment]:
-    """Convert comments without evidence into questions."""
-    result: list[ReviewComment] = []
-    for c in comments:
-        if c.evidence is None:
-            result.append(ReviewComment(
-                kind="question",
-                body=f"[Evidence needed] {c.body}",
-                file=c.file,
-                line=c.line,
-                evidence=None,
-                confidence=0.5,
-            ))
-        else:
-            result.append(c)
-    return result
+    """Convert comments without evidence into questions.
+
+    .. deprecated::
+        Use :class:`~codesteward.evidence.EvidenceValidator` instead.
+        This function is kept for backward compatibility with existing callers.
+    """
+    validator = EvidenceValidator(strict=True)
+    return validator.validate_comments(comments)
 
 
 # ---------------------------------------------------------------------------
